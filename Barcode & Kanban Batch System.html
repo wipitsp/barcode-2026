@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barcode & Kanban Batch System</title>
+    
+    <!-- PWA Meta Tags & External Manifest Link -->
+    <meta name="theme-color" content="#0b0f17">
+    <meta name="description" content="Sistem Generator Barcode & Kanban Batch Manufaktur Otomotif">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/0b0f17/10b981?text=KANBAN">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0b0f17',
+                        cardbg: '#111827',
+                        bordercolor: '#1f2937',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- JsBarcode CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+    <!-- SheetJS (xlsx) CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f17;
+            color: #e5e7eb;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .font-mono-code {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Custom Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+
+        /* Form Disabled State */
+        input:disabled, select:disabled, button:disabled {
+            opacity: 0.55 !important;
+            cursor: not-allowed !important;
+            filter: grayscale(40%);
+        }
+
+        /* Responsive Label Print Area Layout */
+        #printArea {
+            display: none !important;
+        }
+
+        @media print {
+            @page {
+                size: 50mm 25mm;
+                margin: 0;
+            }
+
+            html, body {
+                background: white !important;
+                color: black !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 50mm !important;
+                height: 25mm !important;
+                overflow: hidden !important;
+            }
+
+            body > *:not(#printArea) {
+                display: none !important;
+            }
+
+            #printArea {
+                display: block !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 50mm !important;
+                height: 25mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .label-page {
+                width: 50mm !important;
+                height: 25mm !important;
+                padding: 1.5mm 2mm !important;
+                box-sizing: border-box !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                background: white !important;
+                color: black !important;
+                overflow: hidden !important;
+            }
+
+            .label-header {
+                width: 100% !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                font-size: 11pt !important;
+                font-weight: 900 !important;
+                font-family: Arial, Helvetica, sans-serif !important;
+                line-height: 1 !important;
+                color: #000 !important;
+            }
+
+            .label-header .badge {
+                border: 1.5px solid #000 !important;
+                padding: 1px 4px !important;
+                font-size: 9pt !important;
+                font-weight: 900 !important;
+                border-radius: 3px !important;
+                background: transparent !important;
+                color: #000 !important;
+            }
+
+            .barcode-box {
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex-grow: 1 !important;
+                margin-top: 1mm !important;
+            }
+
+            .barcode-box svg {
+                width: 46mm !important;
+                height: 17mm !important;
+                max-height: 17mm !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Container Utama -->
+    <div class="max-w-[1600px] w-full mx-auto p-3 sm:p-5 lg:p-6 space-y-5">
+        
+        <!-- Header Navigation & Status System -->
+        <header class="bg-cardbg border border-bordercolor rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="flex items-center gap-3.5">
+                <div class="bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl text-emerald-400 shrink-0">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7M17 10l4 4m0 0l-4 4m4-4H11"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Barcode & Kanban Batch System</h1>
+                        <span class="bg-blue-500/10 text-blue-400 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-blue-500/20">Manufacturing Edition</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                        <span>🔒 Status DB: <strong id="dbStatus" class="text-amber-400">TERKUNCI (Klik START SYSTEM)</strong></span>
+                        <span class="text-gray-600">•</span>
+                        <span>⏱️ Inaktivitas: <strong id="countdownTimer" class="text-amber-400 font-mono-code">60s</strong></span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
+                <button id="btnStart" onclick="startApp()" class="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>START SYSTEM</span>
+                </button>
+                <button id="btnSimpan" onclick="simpanToLocalStorage()" disabled class="flex-1 md:flex-none bg-gray-800 text-gray-400 text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-2 cursor-not-allowed border border-gray-700">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    <span>SIMPAN (Local DB)</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Layout Utama (Form + Preview Grid) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            
+            <!-- Section 1: Form Generator Barcode -->
+            <section class="lg:col-span-4 bg-cardbg p-5 sm:p-6 rounded-2xl border border-bordercolor shadow-xl flex flex-col justify-between h-full">
+                <div>
+                    <div class="flex items-center justify-between pb-3 mb-4 border-b border-gray-800">
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            Generator Barcode Batch
+                        </h2>
+                        <span class="text-[11px] text-gray-400">Input Data</span>
+                    </div>
+
+                    <form id="barcodeForm" onsubmit="event.preventDefault();" class="space-y-4">
+                        <!-- Tanggal Input -->
+                        <div>
+                            <div class="flex justify-between items-center text-xs mb-1.5">
+                                <label for="inputDate" class="text-gray-300 font-medium">Tanggal Produksi</label>
+                                <span id="txtFormattedDate" class="text-emerald-400 font-mono-code text-[11px] font-semibold">-</span>
+                            </div>
+                            <input type="date" id="inputDate" disabled onchange="handleDateChange()" class="w-full bg-[#182234] border border-gray-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono-code transition">
+                        </div>
+
+                        <!-- Dropdown Nama Part -->
+                        <div>
+                            <div class="flex justify-between items-center text-xs mb-1.5">
+                                <label for="selectPartName" class="text-gray-300 font-medium">Nama Part / Keterangan</label>
+                                <span class="text-emerald-400 text-[10px] bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-800/40 font-mono-code">⚡ Dropdown</span>
+                            </div>
+                            <select id="selectPartName" disabled class="w-full bg-[#182234] border border-gray-700/80 rounded-xl px-3.5 py-2.5 text-sm text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 transition" onchange="onPartChange()">
+                                <option value="INJ-L|5H45|INSTRUMENT PANEL 5H45 LHD">INSTRUMENT PANEL 5H45 LHD</option>
+                                <option value="INJ-R|5H45|INSTRUMENT PANEL 5H45 RHD">INSTRUMENT PANEL 5H45 RHD</option>
+                            </select>
+                        </div>
+
+                        <!-- Kode Part & Model (Readonly Auto Fill) -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-300 font-medium mb-1.5">Kode Part</label>
+                                <input type="text" id="inputKodePart" value="INJ-L" readonly class="w-full bg-[#131b2e] border border-gray-800 rounded-xl px-3 py-2 text-sm text-emerald-400 font-bold font-mono-code focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-300 font-medium mb-1.5">Model</label>
+                                <input type="text" id="inputModel" value="5H45" readonly class="w-full bg-[#131b2e] border border-gray-800 rounded-xl px-3 py-2 text-sm text-emerald-400 font-bold font-mono-code focus:outline-none">
+                            </div>
+                        </div>
+
+                        <!-- Qty Barcode & Kanban Counter -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="inputQtyBarcode" class="block text-xs text-gray-300 font-medium mb-1.5">Jumlah Barcode</label>
+                                <input type="number" id="inputQtyBarcode" value="8" min="1" disabled oninput="calculateKanban()" class="w-full bg-[#182234] border border-gray-700/80 rounded-xl px-3.5 py-2 text-sm text-white font-bold font-mono-code focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs text-gray-300 font-medium">Jumlah Kanban</label>
+                                    <button type="button" id="btnResetKanban" onclick="manualResetKanban()" disabled class="text-[10px] text-amber-400 hover:text-amber-300 font-bold px-1.5 py-0.5 rounded bg-amber-950/40 border border-amber-800/60 transition" title="Reset Urutan Kanban Tanggal Ini Ke 1">
+                                        🔄 Reset 1
+                                    </button>
+                                </div>
+                                <input type="text" id="inputQtyKanban" value="1" readonly class="w-full bg-[#131b2e] border border-gray-800 rounded-xl px-3.5 py-2 text-sm text-emerald-400 font-bold font-mono-code text-center focus:outline-none">
+                            </div>
+                        </div>
+                        <p id="lblSummary" class="text-[11px] text-gray-400 italic">8 Barcode total (1 kanban)</p>
+
+                        <!-- No Urut Awal Input -->
+                        <div>
+                            <div class="flex justify-between items-center text-xs mb-1.5">
+                                <label for="inputStartNo" class="text-gray-300 font-medium">No. Urut Awal</label>
+                                <span id="lblNextStartNo" class="text-emerald-400 text-[11px] font-mono-code">Auto (00001)</span>
+                            </div>
+                            <input type="text" id="inputStartNo" placeholder="Kosongkan untuk otomatis" maxlength="5" disabled class="w-full bg-[#182234] border border-gray-700/80 rounded-xl px-3.5 py-2 text-sm text-white font-mono-code focus:outline-none focus:border-emerald-500">
+                            <p class="text-[10px] text-gray-500 mt-1">Nomor urut 5-digit otomatis tersimpan & berlanjut.</p>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <button type="button" id="btnGenerate" onclick="handleGenerateClick()" disabled class="w-full bg-gray-800 text-gray-400 font-bold py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 mt-4 cursor-not-allowed shadow-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            <span>Buat Barcode & Simpan Database</span>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Section 2: Preview Barcode Matrix Grid -->
+            <section class="lg:col-span-8 bg-cardbg p-5 sm:p-6 rounded-2xl border border-bordercolor shadow-xl flex flex-col justify-between h-full">
+                <div>
+                    <!-- Header Preview Barcode -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-800">
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h2 class="text-lg font-bold text-white">Preview Matrix Label Barcode</h2>
+                                <span id="previewBadgeKode" class="bg-emerald-950 text-emerald-400 text-xs px-2.5 py-0.5 rounded-full border border-emerald-800 font-mono-code font-bold">-</span>
+                                <span id="previewBadgeModel" class="bg-blue-950 text-blue-400 text-xs px-2.5 py-0.5 rounded-full border border-blue-800 font-mono-code font-bold">-</span>
+                            </div>
+                            <p id="previewSubtitle" class="text-xs text-gray-400 mt-1">Silakan klik tombol START SYSTEM untuk mengaktifkan generator.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="downloadCSV()" class="bg-[#182234] hover:bg-gray-700 text-gray-200 text-xs font-semibold px-3 py-2 rounded-xl border border-gray-700 flex items-center gap-1.5 transition cursor-pointer">
+                                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                <span>Unduh CSV</span>
+                            </button>
+                            <button onclick="triggerPrint()" class="bg-emerald-500 hover:bg-emerald-400 text-gray-950 text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-emerald-950/50 cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                <span>Cetak Label</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Quick Overview Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+                        <div class="bg-[#131b2e] border border-gray-800/80 p-3 rounded-xl">
+                            <span class="text-[10px] text-gray-400 font-semibold tracking-wider block uppercase">Jumlah Barcode</span>
+                            <div class="flex items-baseline gap-1 mt-1">
+                                <span id="metricBarcode" class="text-xl font-bold text-white font-mono-code">0</span>
+                                <span class="text-xs text-gray-400">Pcs</span>
+                            </div>
+                        </div>
+                        <div class="bg-[#131b2e] border border-gray-800/80 p-3 rounded-xl">
+                            <span class="text-[10px] text-gray-400 font-semibold tracking-wider block uppercase">Jumlah Kanban</span>
+                            <div class="flex items-baseline gap-1 mt-1">
+                                <span id="metricKanban" class="text-xl font-bold text-emerald-400 font-mono-code">0</span>
+                                <span class="text-xs text-gray-400">Lembar</span>
+                            </div>
+                        </div>
+                        <div class="bg-[#131b2e] border border-gray-800/80 p-3 rounded-xl">
+                            <span class="text-[10px] text-gray-400 font-semibold tracking-wider block uppercase">Kapasitas / Kanban</span>
+                            <div class="flex items-baseline gap-1 mt-1">
+                                <span id="metricPerKanban" class="text-xl font-bold text-blue-400 font-mono-code">8</span>
+                                <span class="text-xs text-gray-400">Barcode</span>
+                            </div>
+                        </div>
+                        <div class="bg-[#131b2e] border border-gray-800/80 p-3 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-gray-400 font-semibold tracking-wider uppercase">No. Urut Batch</span>
+                                <span class="text-[9px] bg-emerald-950 text-emerald-400 px-1 rounded border border-emerald-800 font-mono-code">5 DIGIT</span>
+                            </div>
+                            <div id="metricNoUrut" class="text-sm font-bold text-amber-400 font-mono-code mt-1.5">00000 – 00000</div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Barcode Grid -->
+                    <div id="barcodeGrid" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 my-4 max-h-[360px] overflow-y-auto pr-1">
+                        <div class="col-span-full py-12 text-center text-gray-500 text-xs italic">
+                            Belum ada barcode yang di-generate.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Summary Info -->
+                <div class="border border-gray-800 rounded-xl p-3 bg-[#131b2e] flex justify-between items-center text-xs">
+                    <span class="text-gray-400 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Total payload aktif: <strong id="txtTotalBaris" class="text-white font-mono-code">0</strong> baris
+                    </span>
+                    <span class="bg-emerald-950 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-800 font-mono-code font-bold">Standard Code128</span>
+                </div>
+            </section>
+        </div>
+
+        <!-- Section 3: Real-time Dashboard Statistik Database Internal -->
+        <section class="bg-cardbg p-5 sm:p-6 rounded-2xl border border-bordercolor shadow-xl">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        📊 Dashboard Statistik Database Internal
+                    </h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Ringkasan real-time dari data batch dan barcode yang tersimpan di LocalStorage.</p>
+                </div>
+                <span class="bg-emerald-950 text-emerald-400 text-xs px-3 py-1 rounded-full border border-emerald-800 font-mono-code font-bold">Real-time Data</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Total Batch -->
+                <div class="bg-[#182234] border border-gray-800 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">TOTAL BATCH</span>
+                        <h4 id="statTotalBatch" class="text-2xl font-black text-white font-mono-code mt-1">0</h4>
+                        <span class="text-[10px] text-emerald-400 mt-0.5 inline-block">Sesi tersimpan</span>
+                    </div>
+                    <div class="bg-emerald-500/10 p-3 rounded-xl text-emerald-400 border border-emerald-500/20">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                </div>
+
+                <!-- Total Barcode -->
+                <div class="bg-[#182234] border border-gray-800 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">AKUMULASI BARCODE</span>
+                        <h4 id="statTotalBarcode" class="text-2xl font-black text-emerald-400 font-mono-code mt-1">0</h4>
+                        <span class="text-[10px] text-gray-400 mt-0.5 inline-block">Total label tercetak</span>
+                    </div>
+                    <div class="bg-blue-500/10 p-3 rounded-xl text-blue-400 border border-blue-500/20">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </div>
+                </div>
+
+                <!-- Total Kanban -->
+                <div class="bg-[#182234] border border-gray-800 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">AKUMULASI KANBAN</span>
+                        <h4 id="statTotalKanban" class="text-2xl font-black text-blue-400 font-mono-code mt-1">0</h4>
+                        <span class="text-[10px] text-gray-400 mt-0.5 inline-block">Kelompok kanban</span>
+                    </div>
+                    <div class="bg-purple-500/10 p-3 rounded-xl text-purple-400 border border-purple-500/20">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    </div>
+                </div>
+
+                <!-- Average Barcode per Batch -->
+                <div class="bg-[#182234] border border-gray-800 p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">RATA-RATA / BATCH</span>
+                        <h4 id="statAvgBarcode" class="text-2xl font-black text-amber-400 font-mono-code mt-1">0</h4>
+                        <span class="text-[10px] text-gray-400 mt-0.5 inline-block">Barcode per batch</span>
+                    </div>
+                    <div class="bg-amber-500/10 p-3 rounded-xl text-amber-400 border border-amber-500/20">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Breakdown Per Kode Part -->
+            <div class="mt-4 grid grid-cols-2 gap-3 max-w-md">
+                <div class="bg-[#131b2e] border border-gray-800 p-3 rounded-xl flex items-center justify-between">
+                    <span class="text-xs font-mono-code font-bold text-emerald-400">INJ-L (LHD)</span>
+                    <span id="statCodeINJL" class="text-sm font-bold text-white font-mono-code">0 pcs</span>
+                </div>
+                <div class="bg-[#131b2e] border border-gray-800 p-3 rounded-xl flex items-center justify-between">
+                    <span class="text-xs font-mono-code font-bold text-blue-400">INJ-R (RHD)</span>
+                    <span id="statCodeINJR" class="text-sm font-bold text-white font-mono-code">0 pcs</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Riwayat Database Internal Table -->
+        <section class="bg-cardbg p-5 sm:p-6 rounded-2xl border border-bordercolor shadow-xl">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        🗄️ Riwayat Database Internal (<span id="totalRecordsCount" class="text-emerald-400 font-mono-code">0</span> Batch)
+                    </h3>
+                    <p class="text-xs text-gray-400 mt-0.5">Tersimpan otomatis pada memori lokal peramban (LocalStorage).</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="deleteSelectedHistory()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 py-2 rounded-xl border border-red-500/20 flex items-center gap-1.5 transition cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <span>Hapus Terpilih</span>
+                    </button>
+                    <button onclick="exportHistoryExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-emerald-950/40 cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>Export Excel (.xlsx)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-12 gap-3 mb-4 text-xs">
+                <div class="lg:col-span-4">
+                    <input type="text" id="filterKeyword" oninput="applyFilters()" placeholder="Cari Keyword / Nama Part..." class="w-full bg-[#182234] border border-gray-700/80 rounded-xl px-3.5 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="lg:col-span-3">
+                    <input type="date" id="filterDate" onchange="applyFilters()" class="w-full bg-[#182234] border border-gray-700/80 rounded-xl px-3.5 py-2 text-gray-300 font-mono-code focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="lg:col-span-2">
+                    <select id="filterCode" onchange="applyFilters()" class="w-full bg-[#182234] border border-gray-700/80 rounded-xl px-3 py-2 text-gray-300 focus:outline-none focus:border-emerald-500">
+                        <option value="">Semua Kode</option>
+                        <option value="INJ-L">INJ-L</option>
+                        <option value="INJ-R">INJ-R</option>
+                    </select>
+                </div>
+                <div class="lg:col-span-2">
+                    <select id="sortOrder" onchange="applyFilters()" class="w-full bg-[#182234] border border-gray-700/80 rounded-xl px-3 py-2 text-gray-300 focus:outline-none focus:border-emerald-500">
+                        <option value="newest">Terbaru ke Lama</option>
+                        <option value="oldest">Lama ke Terbaru</option>
+                    </select>
+                </div>
+                <div class="lg:col-span-1 flex items-center justify-end">
+                    <button onclick="resetFilters()" title="Reset Filter" class="p-2 bg-[#182234] hover:bg-gray-700 text-gray-300 rounded-xl border border-gray-700 w-full flex justify-center items-center cursor-pointer transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabel Body -->
+            <div id="tableScrollContainer" class="overflow-x-auto max-h-[420px] overflow-y-auto rounded-xl border border-gray-800" onscroll="handleTableScroll(event)">
+                <table class="w-full text-left text-xs text-gray-300">
+                    <thead class="bg-[#182234] text-gray-400 uppercase font-semibold text-[10px] tracking-wider sticky top-0 z-10">
+                        <tr>
+                            <th class="p-3.5 w-10 text-center">
+                                <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)" class="rounded bg-gray-800 border-gray-700 text-emerald-500 focus:ring-0 cursor-pointer">
+                            </th>
+                            <th class="p-3.5">Tanggal Scan</th>
+                            <th class="p-3.5">Waktu</th>
+                            <th class="p-3.5">Kode Part</th>
+                            <th class="p-3.5">Model</th>
+                            <th class="p-3.5">Nama Part</th>
+                            <th class="p-3.5">Barcode</th>
+                            <th class="p-3.5">Kanban</th>
+                            <th class="p-3.5">No. Urut</th>
+                            <th class="p-3.5 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-gray-800/80 bg-[#0f1623]"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Print Canvas Layout Hidden Container -->
+    <div id="printArea"></div>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 text-xs text-gray-600 border-t border-gray-900 mt-6">
+        Barcode & Kanban Batch System &copy; 2026 • Manufacturing Web System
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Integrated Service Worker Registration for Offline PWA Capabilities
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    const CACHE_NAME = 'kanban-batch-v1';
+                    self.addEventListener('install', e => self.skipWaiting());
+                    self.addEventListener('activate', e => self.clients.claim());
+                    self.addEventListener('fetch', e => {
+                        e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                    });
+                `;
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl)
+                    .then(() => console.log('PWA Service Worker Aktif'))
+                    .catch(err => console.log('Service Worker Warning:', err));
+            });
+        }
+
+        // Global State Variables
+        let currentBatchData = [];
+        let batchFolderDB = [];
+        let filteredCache = [];
+        let displayedLimit = 50; 
+        let partCounters = {};
+        let kanbanCountersByDate = {}; 
+        let isAppStarted = false;
+
+        let inactivityTimer = null;
+        let countdownInterval = null;
+        let timeLeft = 60;
+
+        // DOM Elements
+        const selectPartName = document.getElementById('selectPartName');
+        const inputDate = document.getElementById('inputDate');
+        const inputKodePart = document.getElementById('inputKodePart');
+        const inputModel = document.getElementById('inputModel');
+        const inputQtyBarcode = document.getElementById('inputQtyBarcode');
+        const inputStartNo = document.getElementById('inputStartNo');
+        const dbStatus = document.getElementById('dbStatus');
+        const lblNextStartNo = document.getElementById('lblNextStartNo');
+        const btnSimpan = document.getElementById('btnSimpan');
+        const btnGenerate = document.getElementById('btnGenerate');
+        const btnResetKanban = document.getElementById('btnResetKanban');
+        const countdownTimerEl = document.getElementById('countdownTimer');
+
+        // Timer Inaktivitas Auto Close 60s
+        function resetInactivityTimer() {
+            if (!isAppStarted) return;
+            clearTimeout(inactivityTimer);
+            clearInterval(countdownInterval);
+            timeLeft = 60;
+            countdownTimerEl.innerText = `${timeLeft}s`;
+
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdownTimerEl.innerText = `${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+
+            inactivityTimer = setTimeout(() => {
+                clearInterval(countdownInterval);
+                closeApplication();
+            }, 60000);
+        }
+
+        function closeApplication() {
+            isAppStarted = false;
+            document.body.innerHTML = `
+                <div style="background:#0b0f17; color:#ef4444; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; font-family:sans-serif; text-align:center; padding: 20px;">
+                    <div style="background:#1f2937; padding:30px; border-radius:16px; border:1px solid #374151; max-width:400px;">
+                        <h1 style="font-size:22px; font-weight:bold; margin-bottom:10px; color:#ffffff;">🔒 APLIKASI TERKUNCI OTOMATIS</h1>
+                        <p style="color:#9ca3af; font-size:13px; line-height:1.5;">Tidak ada aktivitas (klik/interaksi) selama 60 detik demi keamanan sistem.</p>
+                        <button onclick="location.reload()" style="margin-top:20px; background:#10b981; color:#030712; font-weight:bold; padding:12px 24px; border:none; border-radius:10px; cursor:pointer; font-size:14px; width:100%;">Buka Kembali Aplikasi</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        document.addEventListener('click', function() {
+            if (isAppStarted) {
+                resetInactivityTimer();
+            }
+        });
+
+        function getDefaultDate() {
+            const now = new Date();
+            return now.toISOString().split('T')[0];
+        }
+
+        function formatDateToIndonesian(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        }
+
+        function formatDateToYYMMDD(dateStr) {
+            const date = new Date(dateStr);
+            const yy = String(date.getFullYear()).slice(-2);
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${dd}${mm}${yy}`;
+        }
+
+        function handleDateChange() {
+            if (!isAppStarted) return;
+            document.getElementById('txtFormattedDate').innerText = formatDateToIndonesian(inputDate.value);
+            const [, , partName] = selectPartName.value.split('|');
+            updateStartNoHint(partName);
+            saveLocalState();
+        }
+
+        // 1. Aktivasi Aplikasi via Tombol START SYSTEM (Auto Impor DB)
+        function startApp() {
+            isAppStarted = true;
+
+            // Enable All Inputs
+            inputDate.disabled = false;
+            selectPartName.disabled = false;
+            inputQtyBarcode.disabled = false;
+            inputStartNo.disabled = false;
+            btnResetKanban.disabled = false;
+
+            // Enable Actions
+            btnGenerate.disabled = false;
+            btnGenerate.classList.remove('bg-gray-800', 'text-gray-400', 'cursor-not-allowed');
+            btnGenerate.classList.add('bg-emerald-500', 'hover:bg-emerald-400', 'text-gray-950', 'cursor-pointer', 'active:scale-95');
+
+            btnSimpan.disabled = false;
+            btnSimpan.classList.remove('bg-gray-800', 'text-gray-400', 'cursor-not-allowed');
+            btnSimpan.classList.add('bg-blue-600', 'hover:bg-blue-500', 'text-white', 'cursor-pointer');
+
+            const btnStart = document.getElementById('btnStart');
+            btnStart.classList.remove('bg-emerald-600');
+            btnStart.classList.add('bg-emerald-800');
+            btnStart.innerHTML = `<span>✅ SISTEM AKTIF</span>`;
+
+            inputDate.value = getDefaultDate();
+            document.getElementById('txtFormattedDate').innerText = formatDateToIndonesian(inputDate.value);
+
+            // AUTO IMPOR DATABASE & STATE DARI LOCALSTORAGE
+            loadLocalState();
+            calculateKanban();
+            
+            const [, , currentPartName] = selectPartName.value.split('|');
+            updateStartNoHint(currentPartName);
+
+            if (batchFolderDB.length > 0) {
+                generateBatch(true, batchFolderDB[0]);
+            } else {
+                generateBatch(false);
+            }
+
+            applyFilters();
+            showStatusToast("Sistem Aktif & Auto Import DB Berhasil!");
+
+            resetInactivityTimer();
+        }
+
+        // 2. Simpan Data ke LocalStorage Internal Browser
+        function simpanToLocalStorage() {
+            if (!isAppStarted) return;
+            saveLocalState();
+            showStatusToast("Database Berhasil Disimpan ke LocalStorage!");
+        }
+
+        function saveLocalState() {
+            const formState = {
+                dateVal: inputDate.value,
+                selectIndex: selectPartName.selectedIndex,
+                kodePart: inputKodePart.value,
+                model: inputModel.value,
+                qtyBarcode: inputQtyBarcode.value,
+                startNo: inputStartNo.value
+            };
+            
+            localStorage.setItem('kanban_internal_form', JSON.stringify(formState));
+            localStorage.setItem('kanban_internal_counters', JSON.stringify(partCounters));
+            localStorage.setItem('kanban_internal_kanban_by_date', JSON.stringify(kanbanCountersByDate));
+            localStorage.setItem('kanban_internal_db', JSON.stringify(batchFolderDB));
+        }
+
+        function loadLocalState() {
+            const savedState = localStorage.getItem('kanban_internal_form');
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    inputDate.value = state.dateVal || getDefaultDate();
+                    if (state.selectIndex !== undefined) {
+                        selectPartName.selectedIndex = state.selectIndex;
+                        const [kode, model] = selectPartName.value.split('|');
+                        inputKodePart.value = kode;
+                        inputModel.value = model;
+                    }
+                    inputQtyBarcode.value = state.qtyBarcode || 8;
+                    inputStartNo.value = state.startNo || '';
+                } catch(e){}
+            }
+
+            const savedPartCounters = localStorage.getItem('kanban_internal_counters');
+            if (savedPartCounters) {
+                try { partCounters = JSON.parse(savedPartCounters); } catch(e){}
+            }
+
+            const savedKanbanByDate = localStorage.getItem('kanban_internal_kanban_by_date');
+            if (savedKanbanByDate) {
+                try { kanbanCountersByDate = JSON.parse(savedKanbanByDate); } catch(e){}
+            }
+
+            const savedDB = localStorage.getItem('kanban_internal_db');
+            if (savedDB) {
+                try { batchFolderDB = JSON.parse(savedDB); } catch(e){}
+            }
+        }
+
+        function showStatusToast(msg) {
+            dbStatus.innerText = `🟢 ${msg}`;
+            setTimeout(() => {
+                if (isAppStarted) {
+                    dbStatus.innerText = "AKTIF (Penyimpanan Lokal)";
+                }
+            }, 3000);
+        }
+
+        function onPartChange() {
+            if (!isAppStarted) return;
+            const [kode, model, partName] = selectPartName.value.split('|');
+            inputKodePart.value = kode;
+            inputModel.value = model;
+            updateStartNoHint(partName);
+            saveLocalState();
+        }
+
+        function manualResetKanban() {
+            if (!isAppStarted) return;
+            const dateVal = inputDate.value;
+            const [, , partName] = selectPartName.value.split('|');
+            
+            if (!kanbanCountersByDate[dateVal]) {
+                kanbanCountersByDate[dateVal] = {};
+            }
+            kanbanCountersByDate[dateVal][partName] = 0;
+            saveLocalState();
+            showStatusToast(`Nomor Kanban Tanggal ${dateVal} Direset ke 1!`);
+        }
+
+        function updateStartNoHint(partName) {
+            const lastNo = partCounters[partName] !== undefined ? partCounters[partName] : 0;
+            const nextNo = lastNo + 1;
+            if (nextNo > 99999) {
+                lblNextStartNo.innerText = `Limit (99999)`;
+            } else {
+                const formattedNext = String(nextNo).padStart(5, '0');
+                lblNextStartNo.innerText = `Auto (${formattedNext})`;
+            }
+        }
+
+        function calculateKanban() {
+            let qtyBarcode = parseInt(inputQtyBarcode.value) || 0;
+            let qtyKanban = Math.max(1, Math.ceil(qtyBarcode / 8));
+            document.getElementById('inputQtyKanban').value = qtyKanban;
+            document.getElementById('lblSummary').innerText = `${qtyBarcode} Barcode total (${qtyKanban} kanban)`;
+        }
+
+        function handleGenerateClick() {
+            generateBatch(false);
+        }
+
+        // 3. Generator Barcode Logic & Renderer (Auto Update DB)
+        function generateBatch(isReload = false, savedBatch = null) {
+            if (!isAppStarted) return;
+
+            const dateVal = savedBatch ? savedBatch.dateVal : inputDate.value;
+            const selectedOpt = selectPartName.options[selectPartName.selectedIndex].text;
+            const selectPartText = savedBatch ? savedBatch.partName : selectedOpt;
+            const kodePart = savedBatch ? savedBatch.kodePart : inputKodePart.value;
+            const model = savedBatch ? savedBatch.model : inputModel.value;
+            
+            const qtyBarcode = savedBatch ? savedBatch.qtyBarcode : (parseInt(inputQtyBarcode.value) || 8);
+            
+            if (qtyBarcode < 1) {
+                return;
+            }
+
+            const qtyKanban = Math.max(1, Math.ceil(qtyBarcode / 8));
+            
+            let startNo;
+            if (savedBatch) {
+                startNo = savedBatch.startNo;
+            } else {
+                let startNoInput = inputStartNo.value.trim();
+                if (startNoInput) {
+                    startNo = parseInt(startNoInput, 10);
+                } else {
+                    let lastNoForThisPart = partCounters[selectPartText] !== undefined ? partCounters[selectPartText] : 0;
+                    startNo = lastNoForThisPart + 1;
+                }
+            }
+
+            const endNo = startNo + qtyBarcode - 1;
+
+            if (startNo > 99999 || endNo > 99999) {
+                alert("Batas nomor urut maksimal adalah 5 digit (99999)!");
+                return;
+            }
+
+            // Preview UI Header Updates
+            document.getElementById('txtFormattedDate').innerText = formatDateToIndonesian(dateVal);
+            document.getElementById('previewBadgeKode').innerText = kodePart;
+            document.getElementById('previewBadgeModel').innerText = `Model: ${model}`;
+            document.getElementById('previewSubtitle').innerText = `${selectPartText} • ${formatDateToIndonesian(dateVal)}`;
+            document.getElementById('metricBarcode').innerText = qtyBarcode;
+            document.getElementById('metricKanban').innerText = qtyKanban;
+            document.getElementById('metricPerKanban').innerText = 8;
+            document.getElementById('inputQtyKanban').value = qtyKanban;
+            document.getElementById('lblSummary').innerText = `${qtyBarcode} Barcode total (${qtyKanban} kanban)`;
+            
+            const startStr = String(startNo).padStart(5, '0');
+            const endStr = String(endNo).padStart(5, '0');
+            document.getElementById('metricNoUrut').innerText = `${startStr} – ${endStr}`;
+            document.getElementById('txtTotalBaris').innerText = qtyBarcode;
+
+            currentBatchData = [];
+            const barcodeGrid = document.getElementById('barcodeGrid');
+            const printArea = document.getElementById('printArea');
+            
+            barcodeGrid.innerHTML = '';
+            printArea.innerHTML = '';
+
+            const dateCode = formatDateToYYMMDD(dateVal);
+            let currentNo = startNo;
+            let batchItems = [];
+
+            // Penentuan Nomor Kanban Per Tanggal
+            let kanbanStartCount = 1;
+            if (!savedBatch) {
+                const dateKanbanStore = kanbanCountersByDate[dateVal] || {};
+                let lastKanbanCount = dateKanbanStore[selectPartText] !== undefined ? dateKanbanStore[selectPartText] : 0;
+                kanbanStartCount = lastKanbanCount + 1;
+            } else if (savedBatch.items && savedBatch.items.length > 0) {
+                const firstKanbanStr = String(savedBatch.items[0].kanban).replace(/KANBAN\s*/i, '');
+                kanbanStartCount = parseInt(firstKanbanStr, 10) || 1;
+            }
+
+            for (let i = 0; i < qtyBarcode; i++) {
+                const kanbanIndex = kanbanStartCount + Math.floor(i / 8);
+                const noUrutStr = String(currentNo).padStart(5, '0');
+                const payload = `${dateCode}${kodePart}${noUrutStr}`;
+
+                const item = {
+                    model: model,
+                    noUrut: `#${noUrutStr}`,
+                    kanban: `${kanbanIndex}`, 
+                    payload: payload,
+                    uniqueId: `${currentNo}_${Math.random().toString(36).substring(2, 6)}`
+                };
+                currentBatchData.push(item);
+                batchItems.push(item);
+
+                // Element Cards di Web Preview Grid
+                const card = document.createElement('div');
+                card.className = "bg-white text-black p-2 rounded-lg flex flex-col justify-between shadow border border-gray-200 gap-1";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center text-[11px] font-black tracking-tight">
+                        <span class="truncate">${item.model}</span>
+                        <span class="border border-black text-[9px] px-1 py-0.2 rounded font-bold bg-gray-100 shrink-0 font-mono-code">${item.kanban}</span>
+                    </div>
+                    <div class="flex justify-center my-0.5 overflow-hidden">
+                        <svg id="barcode-ui-${item.uniqueId}" class="max-w-full"></svg>
+                    </div>
+                `;
+                barcodeGrid.appendChild(card);
+
+                // Element Label untuk Canvas Print
+                const printCard = document.createElement('div');
+                printCard.className = "label-page";
+                printCard.innerHTML = `
+                    <div class="label-header">
+                        <span>${item.model}</span>
+                        <span class="badge">${item.kanban}</span>
+                    </div>
+                    <div class="barcode-box">
+                        <svg id="barcode-print-${item.uniqueId}"></svg>
+                    </div>
+                `;
+                printArea.appendChild(printCard);
+
+                currentNo++;
+            }
+
+            // Render Barcode via JsBarcode Library
+            setTimeout(() => {
+                batchItems.forEach(item => {
+                    try {
+                        JsBarcode(`#barcode-ui-${item.uniqueId}`, item.payload, {
+                            format: "CODE128", width: 1.4, height: 36, displayValue: true, fontSize: 13, fontOptions: "bold", margin: 1
+                        });
+                        JsBarcode(`#barcode-print-${item.uniqueId}`, item.payload, {
+                            format: "CODE128", width: 1.8, height: 46, displayValue: true, fontSize: 18, fontOptions: "bold", margin: 1
+                        });
+                    } catch (err) {
+                        console.error("Gagal Render Barcode:", err);
+                    }
+                });
+            }, 50);
+
+            // Update Counters & Records
+            partCounters[selectPartText] = endNo;
+
+            if (!kanbanCountersByDate[dateVal]) {
+                kanbanCountersByDate[dateVal] = {};
+            }
+            const totalKanbanGenerated = kanbanStartCount + qtyKanban - 1;
+            kanbanCountersByDate[dateVal][selectPartText] = totalKanbanGenerated;
+
+            if (!isReload) {
+                const now = new Date();
+                const scanDateOnly = now.toLocaleDateString('id-ID', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                const scanTimeOnly = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                
+                const newBatchRecord = {
+                    id: 'batch_' + Date.now(),
+                    scanDate: scanDateOnly,
+                    scanTime: scanTimeOnly,
+                    dateVal: dateVal,
+                    formattedDate: formatDateToIndonesian(dateVal),
+                    kodePart: kodePart,
+                    model: model,
+                    partName: selectPartText,
+                    qtyBarcode: qtyBarcode,
+                    qtyKanban: qtyKanban,
+                    startNo: startNo,
+                    endNo: endNo,
+                    items: batchItems
+                };
+                
+                batchFolderDB.unshift(newBatchRecord);
+                if (batchFolderDB.length > 5000) {
+                    batchFolderDB.pop();
+                }
+
+                applyFilters();
+                // AUTO UPDATE DATABASE
+                saveLocalState();
+                showStatusToast("Barcode dibuat & Auto Update DB sukses!");
+            } else {
+                updateStartNoHint(selectPartText);
+                saveLocalState();
+            }
+        }
+
+        // 4. Update Dashboard Statistik Real-time
+        function updateDashboardStats() {
+            const totalBatch = batchFolderDB.length;
+            let totalBarcode = 0;
+            let totalKanban = 0;
+            let codeTotals = { "INJ-L": 0, "INJ-R": 0 };
+
+            batchFolderDB.forEach(batch => {
+                totalBarcode += (batch.qtyBarcode || 0);
+                totalKanban += (batch.qtyKanban || 0);
+                if (codeTotals[batch.kodePart] !== undefined) {
+                    codeTotals[batch.kodePart] += (batch.qtyBarcode || 0);
+                }
+            });
+
+            const avgBarcode = totalBatch > 0 ? Math.round(totalBarcode / totalBatch) : 0;
+
+            document.getElementById('statTotalBatch').innerText = totalBatch.toLocaleString('id-ID');
+            document.getElementById('statTotalBarcode').innerText = totalBarcode.toLocaleString('id-ID');
+            document.getElementById('statTotalKanban').innerText = totalKanban.toLocaleString('id-ID');
+            document.getElementById('statAvgBarcode').innerText = avgBarcode.toLocaleString('id-ID');
+
+            document.getElementById('statCodeINJL').innerText = `${codeTotals["INJ-L"].toLocaleString('id-ID')} pcs`;
+            document.getElementById('statCodeINJR').innerText = `${codeTotals["INJ-R"].toLocaleString('id-ID')} pcs`;
+            document.getElementById('totalRecordsCount').innerText = totalBatch.toLocaleString('id-ID');
+        }
+
+        // 5. Filter & Render Tabel Riwayat
+        function applyFilters() {
+            const keyword = document.getElementById('filterKeyword').value.toLowerCase();
+            const dateFilter = document.getElementById('filterDate').value;
+            const codeFilter = document.getElementById('filterCode').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+
+            filteredCache = batchFolderDB.filter(item => {
+                const matchKeyword = item.partName.toLowerCase().includes(keyword) || item.kodePart.toLowerCase().includes(keyword);
+                const matchDate = dateFilter ? item.dateVal === dateFilter : true;
+                const matchCode = codeFilter ? item.kodePart === codeFilter : true;
+                return matchKeyword && matchDate && matchCode;
+            });
+
+            if (sortOrder === 'oldest') {
+                filteredCache.sort((a, b) => new Date(a.dateVal) - new Date(b.dateVal));
+            } else {
+                filteredCache.sort((a, b) => new Date(b.dateVal) - new Date(a.dateVal));
+            }
+
+            displayedLimit = 50; 
+            renderHistoryTable();
+            updateDashboardStats();
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            if (filteredCache.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-500 italic">Database kosong atau data tidak ditemukan.</td></tr>`;
+                document.getElementById('selectAllCheckbox').checked = false;
+                return;
+            }
+
+            const renderSlice = filteredCache.slice(0, displayedLimit);
+            let htmlContent = '';
+
+            renderSlice.forEach((batch) => {
+                const startStr = String(batch.startNo).padStart(5, '0');
+                const endStr = String(batch.endNo).padStart(5, '0');
+                const scanDateDisplay = batch.scanDate || batch.dateVal || '-';
+                const scanTimeDisplay = batch.scanTime || '-';
+                
+                htmlContent += `
+                    <tr class="hover:bg-gray-800/40 transition">
+                        <td class="p-3.5 text-center">
+                            <input type="checkbox" value="${batch.id}" class="row-checkbox rounded bg-gray-800 border-gray-700 text-emerald-500 focus:ring-0 cursor-pointer">
+                        </td>
+                        <td class="p-3.5 font-mono-code text-gray-300">${scanDateDisplay}</td>
+                        <td class="p-3.5 font-mono-code text-emerald-400">${scanTimeDisplay}</td>
+                        <td class="p-3.5"><span class="bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded-full font-mono-code font-bold border border-emerald-800">${batch.kodePart}</span></td>
+                        <td class="p-3.5 font-mono-code font-semibold">${batch.model}</td>
+                        <td class="p-3.5 font-medium">${batch.partName}</td>
+                        <td class="p-3.5 font-mono-code font-bold">${batch.qtyBarcode}</td>
+                        <td class="p-3.5 font-mono-code text-blue-400 font-bold">${batch.qtyKanban}</td>
+                        <td class="p-3.5 font-mono-code text-amber-400">${startStr}–${endStr}</td>
+                        <td class="p-3.5 text-right space-x-1">
+                            <button onclick="reloadBatch('${batch.id}')" title="Muat Batch" class="p-1.5 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-emerald-400 transition cursor-pointer">📁</button>
+                            <button onclick="printBatch('${batch.id}')" title="Cetak Batch" class="p-1.5 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-emerald-400 transition cursor-pointer">🖨️</button>
+                            <button onclick="deleteBatch('${batch.id}')" title="Hapus Batch" class="p-1.5 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-red-400 transition cursor-pointer">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = htmlContent;
+        }
+
+        function handleTableScroll(event) {
+            const container = event.target;
+            if (container.scrollTop + container.clientHeight >= container.scrollHeight - 30) {
+                if (displayedLimit < filteredCache.length) {
+                    displayedLimit += 50; 
+                    renderHistoryTable();
+                }
+            }
+        }
+
+        function toggleSelectAll(masterCheckbox) {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = masterCheckbox.checked;
+            });
+        }
+
+        function deleteSelectedHistory() {
+            if (!isAppStarted) return;
+            const selectedCheckboxes = document.querySelectorAll('.row-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                alert("Pilih minimal satu riwayat batch yang ingin dihapus.");
+                return;
+            }
+
+            if (confirm(`Yakin ingin menghapus ${selectedCheckboxes.length} riwayat batch terpilih?`)) {
+                const idsToDelete = Array.from(selectedCheckboxes).map(cb => cb.value);
+                batchFolderDB = batchFolderDB.filter(batch => !idsToDelete.includes(batch.id));
+                
+                document.getElementById('selectAllCheckbox').checked = false;
+                saveLocalState();
+                applyFilters();
+                showStatusToast("Riwayat Terpilih Berhasil Dihapus!");
+            }
+        }
+
+        function reloadBatch(id) {
+            if (!isAppStarted) return;
+            const batch = batchFolderDB.find(b => b.id === id);
+            if (!batch) return;
+            generateBatch(true, batch);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function printBatch(id) {
+            if (!isAppStarted) return;
+            reloadBatch(id);
+            setTimeout(() => {
+                triggerPrint();
+            }, 300);
+        }
+
+        function deleteBatch(id) {
+            if (!isAppStarted) return;
+            if (confirm("Hapus data batch ini dari database internal?")) {
+                batchFolderDB = batchFolderDB.filter(b => b.id !== id);
+                saveLocalState();
+                applyFilters();
+                showStatusToast("Batch Berhasil Dihapus!");
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('filterKeyword').value = '';
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterCode').value = '';
+            document.getElementById('sortOrder').value = 'newest';
+            applyFilters();
+        }
+
+        function triggerPrint() {
+            const printArea = document.getElementById('printArea');
+            if (!printArea || printArea.innerHTML.trim() === "") {
+                generateBatch(true);
+            }
+            setTimeout(() => {
+                window.print();
+            }, 150);
+        }
+
+        function downloadCSV() {
+            if (!currentBatchData.length) return;
+            let csvContent = "Model,No Urut,Kanban,Payload\r\n";
+            currentBatchData.forEach(row => {
+                csvContent += `"${row.model}","${row.noUrut}","${row.kanban}","${row.payload}"\r\n`;
+            });
+            
+            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Barcode_Batch_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        function exportHistoryExcel() {
+            if (!batchFolderDB.length) {
+                alert("Belum ada data riwayat untuk diexport.");
+                return;
+            }
+            const excelData = batchFolderDB.filter(Boolean).map(b => ({
+                "Tanggal Scan": b.scanDate || b.dateVal,
+                "Waktu Scan": b.scanTime || "",
+                "Kode Part": b.kodePart,
+                "Model": b.model,
+                "Nama Part": b.partName,
+                "Jumlah Barcode": b.qtyBarcode,
+                "Jumlah Kanban": b.qtyKanban,
+                "No. Urut Batch": `${String(b.startNo).padStart(5,'0')}-${String(b.endNo).padStart(5,'0')}`
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Riwayat Batch");
+            XLSX.writeFile(workbook, `Kanban_Database_Export_${Date.now()}.xlsx`);
+        }
+
+        // On Page Load Init
+        window.onload = () => {
+            loadLocalState();
+            updateDashboardStats();
+            document.getElementById('inputDate').value = getDefaultDate();
+            document.getElementById('txtFormattedDate').innerText = formatDateToIndonesian(getDefaultDate());
+        };
+    </script>
+</body>
+</html>
